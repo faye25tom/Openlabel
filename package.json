@@ -1,7 +1,7 @@
 {
   "name": "openlabel-studio",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Industrial barcode and label designer with TSPL2 / ZPL II compiler",
   "author": "faye25tom",
   "type": "module",

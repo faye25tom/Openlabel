@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { LabelProject } from '../types/model';
 import { compileToTspl2, compileToZpl2, Dpi } from '../engine/tspl_compiler';
 import { EvalContext, evaluateSegments } from '../engine/evaluator';
@@ -11,13 +11,20 @@ interface PrintDialogProps {
   onClose: () => void;
 }
 
+type ConnectMode = 'windows' | 'preset' | 'serial' | 'network' | 'agent';
+
 export const PrintDialog: React.FC<PrintDialogProps> = ({
   isOpen,
   project,
   onClose,
 }) => {
-  const [connectMode, setConnectMode] = useState<'preset' | 'serial' | 'network' | 'agent'>('preset');
+  const isDesktopBridgeAvailable =
+    typeof window !== 'undefined' && Boolean(window.openLabel?.isDesktop);
+  const [connectMode, setConnectMode] = useState<ConnectMode>(
+    isDesktopBridgeAvailable ? 'windows' : 'preset'
+  );
   const [printer, setPrinter] = useState<string>('tspl-203');
+  const [dpiSetting, setDpiSetting] = useState<Dpi>(203);
   const [quantity, setQuantity] = useState<number>(3);
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [showRawCode, setShowRawCode] = useState<boolean>(false);
@@ -40,6 +47,48 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
   // Local Agent Prober State
   const [agentStatus, setAgentStatus] = useState<string>('');
   const [isProbingAgent, setIsProbingAgent] = useState<boolean>(false);
+
+  // Windows installed-printer state
+  const [windowsPrinters, setWindowsPrinters] = useState<OpenLabelPrinterInfo[]>([]);
+  const [selectedWindowsPrinter, setSelectedWindowsPrinter] = useState<string>('');
+  const [isLoadingPrinters, setIsLoadingPrinters] = useState<boolean>(false);
+  const [isRawPrinting, setIsRawPrinting] = useState<boolean>(false);
+  const [windowsPrintStatus, setWindowsPrintStatus] = useState<string>('');
+  const [printEncoding, setPrintEncoding] = useState<'gbk' | 'utf8'>('gbk');
+
+  const refreshWindowsPrinters = async () => {
+    if (!window.openLabel) {
+      setWindowsPrintStatus(
+        '当前是浏览器模式，无法读取 Windows 打印队列。请使用已安装的 OpenLabel Studio 桌面版。'
+      );
+      return;
+    }
+
+    setIsLoadingPrinters(true);
+    try {
+      const printers = await window.openLabel.listPrinters();
+      setWindowsPrinters(printers);
+      setSelectedWindowsPrinter((current) => {
+        if (current && printers.some((item) => item.name === current)) return current;
+        return printers.find((item) => item.isDefault)?.name || printers[0]?.name || '';
+      });
+      setWindowsPrintStatus(
+        printers.length > 0
+          ? `已检测到 ${printers.length} 台 Windows 打印机。请选择与系统“打印机和扫描仪”中名称一致的设备。`
+          : '未检测到 Windows 打印机。请先安装驱动，并在系统“打印机和扫描仪”中确认设备在线。'
+      );
+    } catch (error: any) {
+      setWindowsPrintStatus(`读取打印机列表失败：${friendlyErrorMessage(error)}`);
+    } finally {
+      setIsLoadingPrinters(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && connectMode === 'windows' && window.openLabel) {
+      void refreshWindowsPrinters();
+    }
+  }, [isOpen, connectMode]);
 
   // Check for any elements with Print-time Input enabled
   const printTimeElements = project.elements.filter((el) => {
@@ -74,8 +123,12 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
     printTimeInputs: printTimeValues,
   };
 
+  const selectedWindowsPrinterInfo =
+    windowsPrinters.find((item) => item.name === selectedWindowsPrinter) || null;
+  const printQuantity = Math.max(1, Math.min(500, Math.floor(Number(quantity) || 1)));
+
   // Compile raw hardware commands
-  const dpi: Dpi = printer.includes('300') ? 300 : 203;
+  const dpi: Dpi = dpiSetting;
   const compiledTspl = compileToTspl2(project, currentEvalCtx, dpi);
   const compiledZpl = compileToZpl2(project, currentEvalCtx, dpi);
   const activeRawCode = rawCodeType === 'tspl' ? compiledTspl : compiledZpl;
@@ -210,6 +263,95 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
     setIsProbingAgent(false);
   };
 
+  const buildBatchRawCode = (type: 'tspl' | 'zpl', targetDpi: Dpi) => {
+    const fixedNow = new Date();
+    const labels: string[] = [];
+
+    for (let page = 0; page < printQuantity; page++) {
+      const dbRowIndex = dbRows.length > 0
+        ? (project.currentRecordIndex + page) % dbRows.length
+        : 0;
+      const context: EvalContext = {
+        labelSequenceIndex: page,
+        dbRowIndex,
+        table: project.database,
+        fixedNow,
+        sharedOverrides: project.sharedFields,
+        printTimeInputs: printTimeValues,
+      };
+      labels.push(
+        type === 'tspl'
+          ? compileToTspl2(project, context, targetDpi)
+          : compileToZpl2(project, context, targetDpi)
+      );
+    }
+
+    return `${labels.join('\r\n')}\r\n`;
+  };
+
+  const sendWindowsRawJob = async (data: string, description: string) => {
+    if (!window.openLabel) {
+      setWindowsPrintStatus(
+        '无法使用 Windows 直连打印：当前不是桌面版。请安装 OpenLabel Studio Windows 安装包。'
+      );
+      return;
+    }
+    if (!selectedWindowsPrinter) {
+      setWindowsPrintStatus('请先选择一台 Windows 已安装打印机。');
+      return;
+    }
+
+    setIsRawPrinting(true);
+    setWindowsPrintStatus(`正在向“${selectedWindowsPrinter}”提交${description}...`);
+    try {
+      const result = await window.openLabel.printRaw({
+        printerName: selectedWindowsPrinter,
+        data,
+        encoding: printEncoding,
+      });
+      const jobText = result.jobId ? `，作业号 #${result.jobId}` : '';
+      setWindowsPrintStatus(
+        `✅ ${description}已提交到 Windows 打印队列${jobText}。若未出纸，请检查打印机电源、USB 连接、驱动状态和指令协议。`
+      );
+    } catch (error: any) {
+      setWindowsPrintStatus(
+        `❌ 打印失败：${friendlyErrorMessage(error)}。请确认打印机未离线，且当前选择的 TSPL2/ZPL II 协议与设备匹配。`
+      );
+    } finally {
+      setIsRawPrinting(false);
+    }
+  };
+
+  const handleWindowsRawPrint = async () => {
+    await sendWindowsRawJob(
+      buildBatchRawCode(rawCodeType, dpiSetting),
+      `${printQuantity} 张标签`
+    );
+  };
+
+  const handleWindowsTestPrint = async () => {
+    const testData = rawCodeType === 'tspl'
+      ? [
+          'SIZE 50 mm, 30 mm',
+          'GAP 2 mm, 0 mm',
+          'DIRECTION 1,0',
+          'CLS',
+          'TEXT 20,20,"TSS24.BF2",0,1,1,"OpenLabel OK"',
+          'PRINT 1,1',
+        ].join('\r\n')
+      : ['^XA', '^PW400', '^LL240', '^FO20,20^A0N,30,30^FDOpenLabel OK^FS', '^XZ'].join('\r\n');
+
+    await sendWindowsRawJob(`${testData}\r\n`, '1 张测试标签');
+  };
+
+  const handleOpenPrinterSettings = async () => {
+    try {
+      await window.openLabel?.openPrinterSettings();
+    } catch (error: any) {
+      setWindowsPrintStatus(`无法打开系统打印机设置：${friendlyErrorMessage(error)}`);
+    }
+  };
+
   const paper = project.paper;
 
   return (
@@ -237,6 +379,7 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
         {/* Mode Tabs */}
         <div className="flex items-center border-b border-slate-200 bg-slate-100/70 px-5 pt-2 gap-1 text-xs">
           {[
+            { id: 'windows' as const, label: '🖨️ Windows 打印机', desc: '系统已安装 USB 打印机直连' },
             { id: 'preset' as const, label: '💻 驱动仿真与系统打印', desc: '预设配置文件 & 浏览器打印' },
             { id: 'serial' as const, label: '🔌 本地 USB/串口直连', desc: 'WebSerial 免驱动直通出纸' },
             { id: 'network' as const, label: '🌐 局域网网络打印机', desc: 'RAW TCP 9100 IP直连' },
@@ -261,6 +404,143 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
           {/* Left: Mode-Specific Settings */}
           <div className="space-y-4 text-xs flex flex-col justify-between">
             <div className="space-y-4">
+              {/* TAB 0: WINDOWS INSTALLED PRINTERS */}
+              {connectMode === 'windows' && (
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-slate-700 font-semibold">
+                        Windows 已安装打印机（USB / 网络）
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => void refreshWindowsPrinters()}
+                        disabled={isLoadingPrinters}
+                        className="text-[11px] text-sky-600 hover:text-sky-700 hover:underline cursor-pointer disabled:opacity-50"
+                      >
+                        {isLoadingPrinters ? '检测中...' : '刷新列表'}
+                      </button>
+                    </div>
+                    <select
+                      id="windows-printer-select"
+                      value={selectedWindowsPrinter}
+                      onChange={(e) => {
+                        const selectedName = e.target.value;
+                        const selectedInfo = windowsPrinters.find((item) => item.name === selectedName);
+                        const fingerprint = `${selectedName} ${selectedInfo?.driverName || ''}`.toLowerCase();
+                        setSelectedWindowsPrinter(selectedName);
+                        if (fingerprint.includes('zpl') || fingerprint.includes('zebra')) {
+                          setRawCodeType('zpl');
+                        } else if (
+                          fingerprint.includes('tspl') ||
+                          fingerprint.includes('gprinter') ||
+                          fingerprint.includes('gainscha') ||
+                          fingerprint.includes('deli') ||
+                          fingerprint.includes('tsc')
+                        ) {
+                          setRawCodeType('tspl');
+                        }
+                        if (/\b300\b/.test(fingerprint)) {
+                          setDpiSetting(300);
+                        } else if (/\b203\b/.test(fingerprint)) {
+                          setDpiSetting(203);
+                        }
+                        setWindowsPrintStatus('');
+                      }}
+                      disabled={isLoadingPrinters || windowsPrinters.length === 0}
+                      className="w-full px-2.5 py-2 border border-slate-300 rounded text-slate-800 text-xs bg-white outline-none focus:border-sky-500 font-medium disabled:bg-slate-100"
+                    >
+                      {isLoadingPrinters && <option value="">正在读取 Windows 打印队列...</option>}
+                      {!isLoadingPrinters && windowsPrinters.length === 0 && (
+                        <option value="">未检测到打印机</option>
+                      )}
+                      {windowsPrinters.map((item) => (
+                        <option key={item.name} value={item.name}>
+                          {item.displayName || item.name}
+                          {item.isDefault ? '（系统默认）' : ''}
+                          {item.portName ? ` · ${item.portName}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedWindowsPrinterInfo && (
+                      <div className="mt-1.5 grid grid-cols-2 gap-1 p-2 bg-slate-50 border border-slate-200 rounded text-[10px] text-slate-500 font-mono">
+                        <span>驱动：{selectedWindowsPrinterInfo.driverName || '未知'}</span>
+                        <span>端口：{selectedWindowsPrinterInfo.portName || '未知'}</span>
+                        <span>状态：{printerStatusText(selectedWindowsPrinterInfo.status)}</span>
+                        <span>{selectedWindowsPrinterInfo.isDefault ? '系统默认打印机' : '已安装'}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">指令协议</label>
+                      <select
+                        value={rawCodeType}
+                        onChange={(e) => setRawCodeType(e.target.value as 'tspl' | 'zpl')}
+                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded text-xs"
+                      >
+                        <option value="tspl">TSPL2（佳博 / 得力）</option>
+                        <option value="zpl">ZPL II（斑马）</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-semibold mb-1">打印分辨率</label>
+                      <select
+                        value={dpiSetting}
+                        onChange={(e) => setDpiSetting(Number(e.target.value) as Dpi)}
+                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded text-xs"
+                      >
+                        <option value="203">203 DPI</option>
+                        <option value="300">300 DPI</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">中文编码</label>
+                    <select
+                      value={printEncoding}
+                      onChange={(e) => setPrintEncoding(e.target.value as 'gbk' | 'utf8')}
+                      className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded text-xs"
+                    >
+                      <option value="gbk">GBK / GB18030（中文标签推荐）</option>
+                      <option value="utf8">UTF-8</option>
+                    </select>
+                  </div>
+
+                  {windowsPrintStatus && (
+                    <div className="p-2.5 bg-white rounded border border-slate-200 text-[11px] leading-relaxed break-words">
+                      {windowsPrintStatus}
+                    </div>
+                  )}
+
+                  <div className="p-2.5 bg-sky-50 border border-sky-200 rounded-lg text-sky-900 text-[10px] leading-relaxed space-y-1">
+                    <div className="font-semibold">使用前检查</div>
+                    <div>1. 打印机已开机，并通过 USB 连接到此电脑。</div>
+                    <div>2. Windows“设置 → 蓝牙和设备 → 打印机和扫描仪”中能看到该设备。</div>
+                    <div>3. 佳博 / 得力常用 TSPL2；斑马使用 ZPL II。协议不匹配时可能只走纸或输出乱码。</div>
+                    <div className="flex gap-2 pt-1.5">
+                      <button
+                        type="button"
+                        onClick={() => void handleWindowsTestPrint()}
+                        disabled={isRawPrinting || !selectedWindowsPrinter}
+                        className="px-2.5 py-1.5 bg-white border border-sky-300 hover:bg-sky-100 text-sky-800 rounded font-medium cursor-pointer disabled:opacity-50"
+                      >
+                        打印测试页
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleOpenPrinterSettings()}
+                        className="px-2.5 py-1.5 bg-white border border-sky-300 hover:bg-sky-100 text-sky-800 rounded font-medium cursor-pointer"
+                      >
+                        打开系统打印机设置
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* TAB 1: PRESET & SYSTEM PRINT */}
               {connectMode === 'preset' && (
                 <div className="space-y-3">
@@ -271,8 +551,10 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
                     <select
                       value={printer}
                       onChange={(e) => {
-                        setPrinter(e.target.value);
-                        if (e.target.value.includes('zpl')) {
+                        const value = e.target.value;
+                        setPrinter(value);
+                        setDpiSetting(value.includes('300') ? 300 : 203);
+                        if (value.includes('zpl')) {
                           setRawCodeType('zpl');
                         } else {
                           setRawCodeType('tspl');
@@ -586,7 +868,21 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
 
             {/* Bottom Primary Actions */}
             <div className="pt-4 border-t border-slate-100 flex items-center gap-3">
-              {connectMode === 'serial' && serialPort ? (
+              {connectMode === 'windows' ? (
+                <button
+                  type="button"
+                  onClick={() => void handleWindowsRawPrint()}
+                  disabled={isRawPrinting || !selectedWindowsPrinter}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-lg shadow-sm text-sm transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <span>🖨️</span>
+                  <span>
+                    {isRawPrinting
+                      ? '正在提交 Windows 打印队列...'
+                      : `直接打印到 Windows 打印机（${printQuantity} 张）`}
+                  </span>
+                </button>
+              ) : connectMode === 'serial' && serialPort ? (
                 <button
                   type="button"
                   onClick={handleSendSerial}
@@ -708,6 +1004,30 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
     </div>
   );
 };
+
+function printerStatusText(status: OpenLabelPrinterInfo['status']) {
+  switch (status) {
+    case 'ready':
+      return '就绪';
+    case 'printing':
+      return '打印中';
+    case 'warmup':
+      return '预热中';
+    case 'stopped':
+      return '已停止';
+    case 'offline':
+      return '离线';
+    default:
+      return '未知';
+  }
+}
+
+function friendlyErrorMessage(error: any) {
+  return String(error?.message || error || '未知错误')
+    .replace(/^Error invoking remote method '[^']+':\s*/i, '')
+    .replace(/^Error:\s*/i, '')
+    .trim();
+}
 
 function renderStaticPreview(
   el: any,

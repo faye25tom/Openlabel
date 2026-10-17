@@ -3,7 +3,7 @@
 > **工业级云端条码标签设计器与热敏打印工作站**  
 > High-Precision Industrial Barcode & Label Designer with Clean-Room TSPL2 / ZPL II Hardware Compiler.
 
-![OpenLabel Studio](https://img.shields.io/badge/OpenLabel-v1.0.0-blue.svg)
+![OpenLabel Studio](https://img.shields.io/badge/OpenLabel-v1.0.1-blue.svg)
 ![React](https://img.shields.io/badge/React-19-61dafb.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6.svg)
 ![Vite](https://img.shields.io/badge/Vite-8.x-646cff.svg)
@@ -47,7 +47,7 @@
   - `QRCODE` / `DMATRIX` / `PDF417`（硬件级二维码生成指令）
   - `BOX` / `BAR` / `REVERSE`（边框、线条与区域反白）
   - `PRINT`（份数与序列打印）
-- **打印机直连指令工作站**：提供打印弹窗，支持一键复制代码、下载 `.prn` / `.tspl` 指令文件，或通过 WebSerial / USB API 发送到本地热敏打印设备。
+- **打印机直连指令工作站**：提供打印弹窗，支持一键复制代码、下载 `.prn` / `.tspl` 指令文件。Windows 桌面版可直接枚举系统已安装的 USB 打印机，并通过 Windows Spooler 以 RAW 模式把 TSPL2 / ZPL II 指令发送到佳博、得力、TSC、斑马等热敏打印机；同时保留 WebSerial、RAW TCP 9100 和本地打印代理入口。
 
 ### 4. 🔗 动态数据段多源拼接引擎 (Dynamic Data Segments)
 每个文本、条码或二维码均可由多个数据段混合拼接（Concatenation）：
@@ -145,9 +145,14 @@ npm run build
 
 # 预览生产构建结果
 npm run preview
+
+# 构建 Windows x64 安装程序
+npm run dist:win
 ```
 
 构建产物将输出在 `dist/` 目录中，可直接部署至任何静态 Web 托管服务（Vercel、Cloudflare Pages、GitHub Pages、Nginx、Docker 等）。
+
+Windows 安装包将输出在 `release/` 目录中。
 
 ---
 
@@ -179,6 +184,7 @@ npm run preview
    - 选择打印机分辨率（203 DPI 或 300 DPI）。
    - 设置打印份数（Copies）与序列起始记录。
 3. 可即时在右侧代码区查看生成的指令，支持「复制指令」、「下载 .prn 文件」或通过本地打印代理直接发送。
+4. **Windows 桌面版推荐方式**：切换到「Windows 打印机」标签，点击「刷新列表」，选择系统“打印机和扫描仪”中已安装的 USB 打印机；确认协议（佳博/得力通常为 TSPL2，斑马为 ZPL II）、DPI 和中文编码（建议 GBK/GB18030），再点击「直接打印到 Windows 打印机」。可先点击「打印测试页」验证连接。
 
 ---
 
