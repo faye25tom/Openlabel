@@ -1,0 +1,6 @@
+{
+  "name": "OpenLabel Studio - Industrial Barcode & Label Designer",
+  "description": "High-precision clean-room industrial cloud label designer and printing workstation with TSPL/ZPL hardware compiler, dynamic serials, date offsets, database binding, and millimeter-accurate canvas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
