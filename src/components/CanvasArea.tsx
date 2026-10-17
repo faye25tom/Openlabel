@@ -621,7 +621,7 @@ function renderElementContent(
     case 'table': {
       const rows = el.kind.rows || 3;
       const cols = el.kind.cols || 2;
-      const fontPx = Math.max(8, ((el.kind.fontSizePt || 8) * 25.4) / 72 * pxPerMm);
+      const fontPx = ((el.kind.fontSizePt || 8) * 25.4) / 72 * pxPerMm;
       const align = el.kind.align || 'center';
       const bColor = el.kind.borderColor || '#000000';
       const strokeW = Math.max(1, Math.round(el.kind.lineThicknessMm * pxPerMm));
