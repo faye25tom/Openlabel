@@ -4,6 +4,7 @@ import { compileToTspl2, compileToZpl2, Dpi } from '../engine/tspl_compiler';
 import { EvalContext, evaluateSegments } from '../engine/evaluator';
 import { BarcodeRenderer } from './BarcodeRenderer';
 import { QrCodeRenderer } from './QrCodeRenderer';
+import { NumberInput } from './NumberInput';
 
 interface PrintDialogProps {
   isOpen: boolean;
@@ -680,10 +681,12 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
                         </div>
                         <div>
                           <label className="block text-[11px] text-slate-500 mb-0.5">端口 (RAW)</label>
-                          <input
-                            type="number"
+                          <NumberInput
+                            min={1}
+                            max={65535}
+                            integer
                             value={netPort}
-                            onChange={(e) => setNetPort(Number(e.target.value))}
+                            onChange={setNetPort}
                             className="w-full px-2 py-1 bg-white border border-slate-300 rounded font-mono text-xs"
                           />
                         </div>
@@ -757,12 +760,12 @@ export const PrintDialog: React.FC<PrintDialogProps> = ({
                   打印批次份数 (Quantity)
                 </label>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    max="1000"
+                  <NumberInput
+                    min={1}
+                    max={500}
+                    integer
                     value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+                    onChange={setQuantity}
                     className="w-24 px-2.5 py-1.5 border border-slate-300 rounded text-xs font-mono font-semibold"
                   />
                   <span className="text-slate-500 text-xs">

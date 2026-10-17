@@ -190,10 +190,10 @@ export default function App() {
       if (el.id === id) {
         return {
           ...el,
-          xMm: Number(xMm.toFixed(1)),
-          yMm: Number(yMm.toFixed(1)),
-          widthMm: Math.max(1, Number(widthMm.toFixed(1))),
-          heightMm: Math.max(1, Number(heightMm.toFixed(1))),
+          xMm,
+          yMm,
+          widthMm,
+          heightMm,
         };
       }
       return el;

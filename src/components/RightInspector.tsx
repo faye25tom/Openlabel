@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   BarcodeSymbology,
   DataSegment,
@@ -17,6 +17,7 @@ import {
   TwoDCodeType,
 } from '../types/model';
 import { EvalContext, evaluateSingleSegment, evaluateSegments } from '../engine/evaluator';
+import { NumberInput } from './NumberInput';
 
 interface RightInspectorProps {
   project: LabelProject;
@@ -55,7 +56,9 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
       <aside className="w-80 h-full bg-white border-l border-slate-200 overflow-y-auto p-4 flex flex-col text-slate-800 shrink-0 select-none">
         <h2 className="text-base font-bold text-slate-900 pb-3 border-b border-slate-100 flex items-center justify-between">
           <span>Label Size</span>
-          <span className="text-xs font-normal text-slate-400">70X50mm</span>
+          <span className="text-xs font-normal text-slate-400">
+            {paper.widthMm}X{paper.heightMm}mm
+          </span>
         </h2>
 
         <div className="mt-4 space-y-4 text-xs">
@@ -64,18 +67,11 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               Width (?)
             </label>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="10"
-                max="300"
-                step="1"
+              <NumberInput
+                min={0.1}
+                step={0.1}
                 value={paper.widthMm}
-                onChange={(e) =>
-                  onUpdatePaper({
-                    ...paper,
-                    widthMm: Math.max(10, Number(e.target.value)),
-                  })
-                }
+                onChange={(widthMm) => onUpdatePaper({ ...paper, widthMm })}
                 className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-slate-800 text-xs focus:ring-1 focus:ring-sky-500 focus:border-sky-500 outline-none"
               />
               <span className="text-slate-500 font-mono">mm</span>
@@ -87,18 +83,11 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
               Height (?)
             </label>
             <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="10"
-                max="300"
-                step="1"
+              <NumberInput
+                min={0.1}
+                step={0.1}
                 value={paper.heightMm}
-                onChange={(e) =>
-                  onUpdatePaper({
-                    ...paper,
-                    heightMm: Math.max(10, Number(e.target.value)),
-                  })
-                }
+                onChange={(heightMm) => onUpdatePaper({ ...paper, heightMm })}
                 className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-slate-800 text-xs focus:ring-1 focus:ring-sky-500 focus:border-sky-500 outline-none"
               />
               <span className="text-slate-500 font-mono">mm</span>
@@ -285,13 +274,11 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
             <div>
               <label className="block text-[10px] text-slate-500 font-medium mb-0.5">宽度 (Width)</label>
               <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  step="0.5"
-                  min="2"
+                <NumberInput
+                  step={0.1}
+                  min={0.1}
                   value={selectedElement.widthMm}
-                  onChange={(e) => {
-                    const nw = Math.max(2, Number(e.target.value));
+                  onChange={(nw) => {
                     const nh = isAspectLocked || selectedElement.kind.type === 'qrcode' ? nw : selectedElement.heightMm;
                     onUpdateElementBounds(selectedElement.id, selectedElement.xMm, selectedElement.yMm, nw, nh);
                   }}
@@ -303,13 +290,11 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
             <div>
               <label className="block text-[10px] text-slate-500 font-medium mb-0.5">高度 (Height)</label>
               <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  step="0.5"
-                  min="2"
+                <NumberInput
+                  step={0.1}
+                  min={0.1}
                   value={selectedElement.heightMm}
-                  onChange={(e) => {
-                    const nh = Math.max(2, Number(e.target.value));
+                  onChange={(nh) => {
                     const nw = isAspectLocked || selectedElement.kind.type === 'qrcode' ? nh : selectedElement.widthMm;
                     onUpdateElementBounds(selectedElement.id, selectedElement.xMm, selectedElement.yMm, nw, nh);
                   }}
@@ -972,17 +957,15 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 <label className="block text-slate-600 font-medium mb-1">
                   Line Thickness (mm)
                 </label>
-                <input
-                  type="number"
-                  min="0.1"
-                  max="5"
-                  step="0.1"
+                <NumberInput
+                  min={0.01}
+                  step={0.01}
                   value={selectedElement.kind.lineThicknessMm}
-                  onChange={(e) => {
+                  onChange={(lineThicknessMm) => {
                     if (selectedElement.kind.type === 'table') {
                       onUpdateElementKind(selectedElement.id, {
                         ...selectedElement.kind,
-                        lineThicknessMm: Math.max(0.1, Number(e.target.value)),
+                        lineThicknessMm,
                       });
                     }
                   }}
@@ -994,17 +977,15 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 <label className="block text-slate-600 font-medium mb-1">
                   Font Size (pt)
                 </label>
-                <input
-                  type="number"
-                  min="5"
-                  max="36"
-                  step="0.5"
+                <NumberInput
+                  min={0.1}
+                  step={0.1}
                   value={selectedElement.kind.fontSizePt ?? 8}
-                  onChange={(e) => {
+                  onChange={(fontSizePt) => {
                     if (selectedElement.kind.type === 'table') {
                       onUpdateElementKind(selectedElement.id, {
                         ...selectedElement.kind,
-                        fontSizePt: Number(e.target.value),
+                        fontSizePt,
                       });
                     }
                   }}
@@ -1284,17 +1265,15 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 <label className="block text-slate-600 font-medium mb-1">
                   Thickness (mm)
                 </label>
-                <input
-                  type="number"
-                  min="0.1"
-                  max="10"
-                  step="0.1"
+                <NumberInput
+                  min={0.01}
+                  step={0.01}
                   value={selectedElement.kind.lineThicknessMm}
-                  onChange={(e) => {
+                  onChange={(lineThicknessMm) => {
                     if (selectedElement.kind.type === 'graph') {
                       onUpdateElementKind(selectedElement.id, {
                         ...selectedElement.kind,
-                        lineThicknessMm: Math.max(0.1, Number(e.target.value)),
+                        lineThicknessMm,
                       });
                     }
                   }}
@@ -1332,17 +1311,15 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
                 <label className="block text-slate-600 font-medium mb-1">
                   Corner Radius / Chamfer (mm)
                 </label>
-                <input
-                  type="number"
-                  min="0.5"
-                  max="30"
-                  step="0.5"
+                <NumberInput
+                  min={0}
+                  step={0.1}
                   value={selectedElement.kind.cornerRadiusMm ?? 3}
-                  onChange={(e) => {
+                  onChange={(cornerRadiusMm) => {
                     if (selectedElement.kind.type === 'graph') {
                       onUpdateElementKind(selectedElement.id, {
                         ...selectedElement.kind,
-                        cornerRadiusMm: Math.max(0.5, Number(e.target.value)),
+                        cornerRadiusMm,
                       });
                     }
                   }}
@@ -1692,13 +1669,13 @@ function ContentSection({
               <label className="block text-slate-600 font-medium mb-1">
                 Start Value
               </label>
-              <input
-                type="number"
+              <NumberInput
+                integer
                 value={activeSegment.startValue}
-                onChange={(e) =>
+                onChange={(startValue) =>
                   updateActiveSegment({
                     ...activeSegment,
-                    startValue: Number(e.target.value),
+                    startValue,
                   })
                 }
                 className="w-full px-2 py-1.5 border border-slate-300 rounded text-slate-800 text-xs font-mono outline-none focus:border-sky-500"
@@ -1744,14 +1721,14 @@ function ContentSection({
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-slate-600 font-medium mb-1">Repeat</label>
-                <input
-                  type="number"
-                  min="1"
+                <NumberInput
+                  min={1}
+                  integer
                   value={activeSegment.repeat}
-                  onChange={(e) =>
+                  onChange={(repeat) =>
                     updateActiveSegment({
                       ...activeSegment,
-                      repeat: Math.max(1, Number(e.target.value)),
+                      repeat,
                     })
                   }
                   className="w-full px-2 py-1.5 border border-slate-300 rounded text-slate-800 text-xs outline-none focus:border-sky-500"
@@ -1759,14 +1736,14 @@ function ContentSection({
               </div>
               <div>
                 <label className="block text-slate-600 font-medium mb-1">Interval</label>
-                <input
-                  type="number"
-                  min="1"
+                <NumberInput
+                  min={1}
+                  integer
                   value={activeSegment.interval}
-                  onChange={(e) =>
+                  onChange={(interval) =>
                     updateActiveSegment({
                       ...activeSegment,
-                      interval: Math.max(1, Number(e.target.value)),
+                      interval,
                     })
                   }
                   className="w-full px-2 py-1.5 border border-slate-300 rounded text-slate-800 text-xs outline-none focus:border-sky-500"
@@ -1777,15 +1754,15 @@ function ContentSection({
             <div className="grid grid-cols-2 gap-2 pt-1 items-center">
               <div>
                 <label className="block text-slate-600 font-medium mb-1">Padding Digits</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="10"
+                <NumberInput
+                  min={0}
+                  max={10}
+                  integer
                   value={activeSegment.paddingWidth || 0}
-                  onChange={(e) =>
+                  onChange={(paddingWidth) =>
                     updateActiveSegment({
                       ...activeSegment,
-                      paddingWidth: Math.max(0, Number(e.target.value)),
+                      paddingWidth,
                     })
                   }
                   placeholder="e.g. 5 for 00001"
@@ -1861,13 +1838,13 @@ function ContentSection({
             <div className="grid grid-cols-3 gap-1.5">
               <div>
                 <label className="block text-slate-500 text-[11px] mb-1">Year Offset</label>
-                <input
-                  type="number"
+                <NumberInput
+                  integer
                   value={activeSegment.yearOffset}
-                  onChange={(e) =>
+                  onChange={(yearOffset) =>
                     updateActiveSegment({
                       ...activeSegment,
-                      yearOffset: Number(e.target.value),
+                      yearOffset,
                     })
                   }
                   className="w-full px-1.5 py-1 border border-slate-300 rounded text-slate-800 text-xs outline-none focus:border-sky-500"
@@ -1875,13 +1852,13 @@ function ContentSection({
               </div>
               <div>
                 <label className="block text-slate-500 text-[11px] mb-1">Month Offset</label>
-                <input
-                  type="number"
+                <NumberInput
+                  integer
                   value={activeSegment.monthOffset}
-                  onChange={(e) =>
+                  onChange={(monthOffset) =>
                     updateActiveSegment({
                       ...activeSegment,
-                      monthOffset: Number(e.target.value),
+                      monthOffset,
                     })
                   }
                   className="w-full px-1.5 py-1 border border-slate-300 rounded text-slate-800 text-xs outline-none focus:border-sky-500"
@@ -1889,13 +1866,13 @@ function ContentSection({
               </div>
               <div>
                 <label className="block text-slate-500 text-[11px] mb-1">Day Offset</label>
-                <input
-                  type="number"
+                <NumberInput
+                  integer
                   value={activeSegment.dayOffset}
-                  onChange={(e) =>
+                  onChange={(dayOffset) =>
                     updateActiveSegment({
                       ...activeSegment,
-                      dayOffset: Number(e.target.value),
+                      dayOffset,
                     })
                   }
                   className="w-full px-1.5 py-1 border border-slate-300 rounded text-slate-800 text-xs outline-none focus:border-sky-500"
@@ -1935,13 +1912,13 @@ function ContentSection({
             />
             <div>
               <label className="block text-slate-600 font-medium mb-1">Minute Offset</label>
-              <input
-                type="number"
+              <NumberInput
+                integer
                 value={activeSegment.minuteOffset}
-                onChange={(e) =>
+                onChange={(minuteOffset) =>
                   updateActiveSegment({
                     ...activeSegment,
-                    minuteOffset: Number(e.target.value),
+                    minuteOffset,
                   })
                 }
                 className="w-full px-2.5 py-1.5 border border-slate-300 rounded text-slate-800 text-xs outline-none focus:border-sky-500"
@@ -1996,15 +1973,11 @@ function FontStyleSection({
           </select>
         </div>
         <div>
-          <input
-            type="number"
-            min="4"
-            max="120"
-            step="0.5"
+          <NumberInput
+            min={0.1}
+            step={0.1}
             value={font.sizePt}
-            onChange={(e) =>
-              onChangeFont({ ...font, sizePt: Math.max(4, Number(e.target.value)) })
-            }
+            onChange={(sizePt) => onChangeFont({ ...font, sizePt })}
             className="w-full px-2 py-1.5 border border-slate-300 rounded text-slate-800 text-xs font-mono outline-none focus:border-sky-500"
           />
         </div>
@@ -2062,13 +2035,10 @@ function FontStyleSection({
             Word Space
           </label>
           <div className="flex items-center gap-1">
-            <input
-              type="number"
-              step="0.5"
+            <NumberInput
+              step={0.1}
               value={font.wordSpacePt}
-              onChange={(e) =>
-                onChangeFont({ ...font, wordSpacePt: Number(e.target.value) })
-              }
+              onChange={(wordSpacePt) => onChangeFont({ ...font, wordSpacePt })}
               className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
             />
             <span className="text-slate-500 font-mono text-[11px]">pt</span>
@@ -2078,15 +2048,12 @@ function FontStyleSection({
         <div>
           <label className="block text-slate-600 font-medium mb-1">Scale</label>
           <div className="flex items-center gap-1">
-            <input
-              type="number"
-              min="20"
-              max="300"
-              step="5"
+            <NumberInput
+              min={1}
+              max={1000}
+              step={1}
               value={font.scalePercent}
-              onChange={(e) =>
-                onChangeFont({ ...font, scalePercent: Number(e.target.value) })
-              }
+              onChange={(scalePercent) => onChangeFont({ ...font, scalePercent })}
               className="w-full px-2 py-1 border border-slate-300 rounded text-xs"
             />
             <span className="text-slate-500 font-mono text-[11px]">%</span>
@@ -2204,63 +2171,12 @@ export function SignedCoordinateInput({
   className?: string;
   title?: string;
 }) {
-  const [text, setText] = useState<string>(String(value));
-
-  useEffect(() => {
-    const parsed = parseFloat(text);
-    if (isNaN(parsed) || parsed !== value) {
-      setText(String(value));
-    }
-  }, [value]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    // Allow typing '-', empty, digits, single decimal point
-    if (/^-?\d*\.?\d*$/.test(raw)) {
-      setText(raw);
-      const num = parseFloat(raw);
-      if (!isNaN(num)) {
-        onChange(num);
-      }
-    }
-  };
-
-  const handleBlur = () => {
-    const num = parseFloat(text);
-    if (!isNaN(num)) {
-      setText(String(num));
-      onChange(num);
-    } else {
-      setText(String(value));
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      const current = parseFloat(text) || 0;
-      const step = e.shiftKey ? 5 : 0.5;
-      const next = Number((current + step).toFixed(1));
-      setText(String(next));
-      onChange(next);
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const current = parseFloat(text) || 0;
-      const step = e.shiftKey ? 5 : 0.5;
-      const next = Number((current - step).toFixed(1));
-      setText(String(next));
-      onChange(next);
-    }
-  };
-
   return (
-    <input
-      type="text"
+    <NumberInput
       title={title}
-      value={text}
-      onChange={handleChange}
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
+      step={0.5}
+      value={value}
+      onChange={onChange}
       className={className}
     />
   );

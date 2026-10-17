@@ -512,7 +512,7 @@ function renderElementContent(
     case 'text': {
       const text = evaluateSegments(el.kind.segments, ctx);
       const font = el.kind.font;
-      const fontPx = Math.max(9, (font.sizePt * 25.4) / 72 * pxPerMm);
+      const fontPx = (font.sizePt * 25.4) / 72 * pxPerMm;
 
       const alignClass =
         font.align === 'center'

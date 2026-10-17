@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PaperSetup, PaperShape } from '../types/model';
+import { NumberInput } from './NumberInput';
 
 interface NewLabelModalProps {
   isOpen: boolean;
@@ -19,6 +20,14 @@ export const NewLabelModal: React.FC<NewLabelModalProps> = ({
   const [name, setName] = useState(initialName);
   const [paper, setPaper] = useState<PaperSetup>({ ...initialPaper });
   const [showMoreSettings, setShowMoreSettings] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      setPaper({ ...initialPaper });
+      setName(initialName);
+      setShowMoreSettings(true);
+    }
+  }, [isOpen, initialPaper, initialName]);
 
   if (!isOpen) return null;
 
@@ -62,18 +71,11 @@ export const NewLabelModal: React.FC<NewLabelModalProps> = ({
                       Width (?)
                     </label>
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min="10"
-                        max="300"
-                        step="1"
+                      <NumberInput
+                        min={0.1}
+                        step={0.1}
                         value={paper.widthMm}
-                        onChange={(e) =>
-                          setPaper({
-                            ...paper,
-                            widthMm: Math.max(10, Number(e.target.value)),
-                          })
-                        }
+                        onChange={(widthMm) => setPaper({ ...paper, widthMm })}
                         className="w-full px-2 py-1.5 border border-slate-300 rounded text-slate-800 text-xs outline-none focus:border-sky-500"
                       />
                       <span className="text-slate-400 font-mono">mm</span>
@@ -84,18 +86,11 @@ export const NewLabelModal: React.FC<NewLabelModalProps> = ({
                       Height (?)
                     </label>
                     <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min="10"
-                        max="300"
-                        step="1"
+                      <NumberInput
+                        min={0.1}
+                        step={0.1}
                         value={paper.heightMm}
-                        onChange={(e) =>
-                          setPaper({
-                            ...paper,
-                            heightMm: Math.max(10, Number(e.target.value)),
-                          })
-                        }
+                        onChange={(heightMm) => setPaper({ ...paper, heightMm })}
                         className="w-full px-2 py-1.5 border border-slate-300 rounded text-slate-800 text-xs outline-none focus:border-sky-500"
                       />
                       <span className="text-slate-400 font-mono">mm</span>
@@ -155,17 +150,12 @@ export const NewLabelModal: React.FC<NewLabelModalProps> = ({
                         <label className="block text-slate-500 text-[11px] mb-0.5">
                           Columns (?)
                         </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="8"
+                        <NumberInput
+                          min={1}
+                          max={8}
+                          integer
                           value={paper.columns}
-                          onChange={(e) =>
-                            setPaper({
-                              ...paper,
-                              columns: Math.max(1, Number(e.target.value)),
-                            })
-                          }
+                          onChange={(columns) => setPaper({ ...paper, columns })}
                           className="w-full px-2 py-1 border border-slate-300 rounded bg-white text-xs"
                         />
                       </div>
@@ -174,18 +164,11 @@ export const NewLabelModal: React.FC<NewLabelModalProps> = ({
                           Gap (?)
                         </label>
                         <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            min="0"
-                            max="50"
-                            step="0.5"
+                          <NumberInput
+                            min={0}
+                            step={0.1}
                             value={paper.gapMm}
-                            onChange={(e) =>
-                              setPaper({
-                                ...paper,
-                                gapMm: Math.max(0, Number(e.target.value)),
-                              })
-                            }
+                            onChange={(gapMm) => setPaper({ ...paper, gapMm })}
                             className="w-full px-2 py-1 border border-slate-300 rounded bg-white text-xs"
                           />
                           <span className="text-slate-400 font-mono text-[10px]">mm</span>
@@ -199,15 +182,11 @@ export const NewLabelModal: React.FC<NewLabelModalProps> = ({
                           Left Right (?)
                         </label>
                         <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            step="0.1"
+                          <NumberInput
+                            step={0.1}
                             value={paper.offsetLeftRightMm}
-                            onChange={(e) =>
-                              setPaper({
-                                ...paper,
-                                offsetLeftRightMm: Number(e.target.value),
-                              })
+                            onChange={(offsetLeftRightMm) =>
+                              setPaper({ ...paper, offsetLeftRightMm })
                             }
                             className="w-full px-2 py-1 border border-slate-300 rounded bg-white text-xs"
                           />
@@ -219,15 +198,11 @@ export const NewLabelModal: React.FC<NewLabelModalProps> = ({
                           Up Down (?)
                         </label>
                         <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            step="0.1"
+                          <NumberInput
+                            step={0.1}
                             value={paper.offsetUpDownMm}
-                            onChange={(e) =>
-                              setPaper({
-                                ...paper,
-                                offsetUpDownMm: Number(e.target.value),
-                              })
+                            onChange={(offsetUpDownMm) =>
+                              setPaper({ ...paper, offsetUpDownMm })
                             }
                             className="w-full px-2 py-1 border border-slate-300 rounded bg-white text-xs"
                           />

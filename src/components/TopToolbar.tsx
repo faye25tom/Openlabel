@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { LabelElement, LabelProject, PaperSetup } from '../types/model';
 import { SAMPLE_TEMPLATES } from '../data/sampleTemplates';
 import { SignedCoordinateInput } from './RightInspector';
+import { NumberInput } from './NumberInput';
 
 interface TopToolbarProps {
   project: LabelProject;
@@ -277,17 +278,16 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
           <div className="flex items-center gap-3 shrink-0 bg-slate-50 px-2.5 py-1 border border-slate-200 rounded">
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 text-[11px]">Width</span>
-              <input
-                type="number"
-                step="0.5"
-                min="1"
+              <NumberInput
+                step={0.1}
+                min={0.1}
                 value={selectedElement.widthMm}
-                onChange={(e) =>
+                onChange={(widthMm) =>
                   onUpdateElementBounds(
                     selectedElement.id,
                     selectedElement.xMm,
                     selectedElement.yMm,
-                    Math.max(1, Number(e.target.value)),
+                    widthMm,
                     selectedElement.heightMm
                   )
                 }
@@ -298,18 +298,17 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
 
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 text-[11px]">Height</span>
-              <input
-                type="number"
-                step="0.5"
-                min="1"
+              <NumberInput
+                step={0.1}
+                min={0.1}
                 value={selectedElement.heightMm}
-                onChange={(e) =>
+                onChange={(heightMm) =>
                   onUpdateElementBounds(
                     selectedElement.id,
                     selectedElement.xMm,
                     selectedElement.yMm,
                     selectedElement.widthMm,
-                    Math.max(1, Number(e.target.value))
+                    heightMm
                   )
                 }
                 className="w-14 px-1 py-0.5 bg-white border border-slate-300 rounded text-slate-800 text-xs font-mono"
