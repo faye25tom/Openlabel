@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
+  BarcodeSymbology,
   DEFAULT_FONT,
   DEFAULT_PAPER,
   DEFAULT_PROMPT,
@@ -19,6 +20,7 @@ import { DatabaseManagerModal } from './components/DatabaseManagerModal';
 import { IconPickerModal } from './components/IconPickerModal';
 import { OcrModal } from './components/OcrModal';
 import { RustArchitectureModal } from './components/RustArchitectureModal';
+import { BarcodePickerModal } from './components/BarcodePickerModal';
 
 interface TabState {
   id: string;
@@ -54,6 +56,7 @@ export default function App() {
   const [showIconPicker, setShowIconPicker] = useState<boolean>(false);
   const [showOcrModal, setShowOcrModal] = useState<boolean>(false);
   const [showRustModal, setShowRustModal] = useState<boolean>(false);
+  const [showBarcodePickerModal, setShowBarcodePickerModal] = useState<boolean>(false);
 
   // Status bar cursor coordinates in mm
   const [cursorMm, setCursorMm] = useState<[number, number]>([0, 0]);
@@ -175,7 +178,7 @@ export default function App() {
     }
   };
 
-  // Element bounds updates
+  // Element bounds updates - Free placement allowed at any coordinates
   const handleUpdateElementBounds = (
     id: string,
     xMm: number,
@@ -189,8 +192,8 @@ export default function App() {
           ...el,
           xMm: Number(xMm.toFixed(1)),
           yMm: Number(yMm.toFixed(1)),
-          widthMm: Number(widthMm.toFixed(1)),
-          heightMm: Number(heightMm.toFixed(1)),
+          widthMm: Math.max(1, Number(widthMm.toFixed(1))),
+          heightMm: Math.max(1, Number(heightMm.toFixed(1))),
         };
       }
       return el;
@@ -311,6 +314,7 @@ export default function App() {
           onOpenDatabaseManager={() => setShowDatabaseManager(true)}
           onOpenOcrModal={() => setShowOcrModal(true)}
           onOpenIconPicker={() => setShowIconPicker(true)}
+          onOpenBarcodePicker={() => setShowBarcodePickerModal(true)}
         />
 
         {/* Center Interactive Canvas with Physical Millimeter Rulers */}
@@ -331,6 +335,29 @@ export default function App() {
             );
           }}
           onCursorMove={(xMm, yMm) => setCursorMm([xMm, yMm])}
+          onUpdateTableCell={(elId, r, c, val) => {
+            const newElements = project.elements.map((el) => {
+              if (el.id === elId && el.kind.type === 'table') {
+                const newCells = el.kind.cells.map((row) => [...row]);
+                while (newCells.length <= r) {
+                  newCells.push(Array(el.kind.cols).fill(''));
+                }
+                while (newCells[r].length <= c) {
+                  newCells[r].push('');
+                }
+                newCells[r][c] = val;
+                return {
+                  ...el,
+                  kind: {
+                    ...el.kind,
+                    cells: newCells,
+                  },
+                };
+              }
+              return el;
+            });
+            commitProjectChange({ ...project, elements: newElements });
+          }}
         />
 
         {/* Right Contextual Property Inspector */}
@@ -339,6 +366,7 @@ export default function App() {
           selectedElementId={currentTab.selectedElementId}
           onUpdatePaper={handleUpdatePaper}
           onOpenPaperModal={() => setShowPaperModal(true)}
+          onOpenBarcodePicker={() => setShowBarcodePickerModal(true)}
           onUpdateElementKind={(elId, newKind) => {
             const newElements = project.elements.map((el) => {
               if (el.id === elId) {
@@ -458,6 +486,61 @@ export default function App() {
       <RustArchitectureModal
         isOpen={showRustModal}
         onClose={() => setShowRustModal(false)}
+      />
+
+      {/* All Barcode Picker Modal (Screenshot 1) */}
+      <BarcodePickerModal
+        isOpen={showBarcodePickerModal}
+        activeSymbology={
+          selectedElement && selectedElement.kind.type === 'barcode'
+            ? selectedElement.kind.symbology
+            : 'code128'
+        }
+        onClose={() => setShowBarcodePickerModal(false)}
+        onSelectSymbology={(symbology) => {
+          if (selectedElement && selectedElement.kind.type === 'barcode') {
+            const newElements = project.elements.map((el) =>
+              el.id === selectedElement.id && el.kind.type === 'barcode'
+                ? {
+                    ...el,
+                    name: `BarCode (${symbology.toUpperCase()})`,
+                    kind: { ...el.kind, symbology },
+                  }
+                : el
+            );
+            commitProjectChange({ ...project, elements: newElements });
+          } else {
+            const el: LabelElement = {
+              id: `el-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              name: `BarCode (${symbology.toUpperCase()})`,
+              xMm: 6,
+              yMm: 15,
+              widthMm: 50,
+              heightMm: 16,
+              locked: false,
+              kind: {
+                type: 'barcode',
+                symbology,
+                segments: [
+                  {
+                    type: 'serial',
+                    startValue: 10001,
+                    direction: 'incremental',
+                    repeat: 1,
+                    interval: 1,
+                    memory: false,
+                    paddingWidth: 5,
+                  },
+                ],
+                activeSegmentIdx: 0,
+                showHumanReadable: true,
+                font: { ...DEFAULT_FONT, sizePt: 8, align: 'center' },
+                prompt: { ...DEFAULT_PROMPT },
+              },
+            };
+            handleAddElement(el);
+          }
+        }}
       />
     </div>
   );

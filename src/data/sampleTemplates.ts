@@ -166,6 +166,7 @@ export const SAMPLE_TEMPLATES: { id: string; name: string; description: string; 
           locked: false,
           kind: {
             type: 'qrcode',
+            codeType: 'QR_Code',
             segments: [
               { type: 'constant', text: 'https://trace.openlabel.org/id/' },
               {

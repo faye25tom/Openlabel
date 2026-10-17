@@ -399,7 +399,7 @@ function renderStaticPreview(el: any, ctx: EvalContext, pxPerMm: number) {
       return (
         <BarcodeRenderer
           value={code}
-          format={el.kind.symbology.toUpperCase()}
+          format={el.kind.symbology}
           showText={el.kind.showHumanReadable}
           width={el.widthMm * pxPerMm}
           height={el.heightMm * pxPerMm}
@@ -409,32 +409,84 @@ function renderStaticPreview(el: any, ctx: EvalContext, pxPerMm: number) {
     case 'qrcode': {
       const content = evaluateSegments(el.kind.segments, ctx);
       return (
-        <div className="w-full h-full">
-          <QrCodeRenderer value={content} errorCorrection={el.kind.errorCorrection} />
+        <div className="w-full h-full flex items-center justify-center overflow-hidden p-0.5">
+          <QrCodeRenderer
+            value={content}
+            codeType={el.kind.codeType}
+            errorCorrection={el.kind.errorCorrection}
+            scalePercent={el.kind.scalePercent ?? 100}
+            marginModules={el.kind.marginModules ?? 1}
+          />
         </div>
       );
     }
     case 'graph': {
       const strokeW = Math.max(1, el.kind.lineThicknessMm * pxPerMm);
-      if (el.kind.shape === 'line') {
-        return (
-          <div
-            className="w-full"
-            style={{
-              height: `${strokeW}px`,
-              backgroundColor: el.kind.strokeColor || '#000000',
-            }}
-          />
-        );
-      }
+      const strokeColor = el.kind.strokeColor || '#000000';
+      const fillColor = el.kind.filled ? el.kind.fillColor || '#ffffff' : 'none';
+      const dashArray =
+        el.kind.lineStyle === 'dashed'
+          ? '6,3'
+          : el.kind.lineStyle === 'dotted'
+          ? '2,2'
+          : undefined;
+
+      const common = {
+        stroke: strokeColor,
+        strokeWidth: strokeW,
+        strokeDasharray: dashArray,
+        fill: fillColor,
+      };
+
       return (
-        <div
-          className="w-full h-full"
-          style={{
-            border: `${strokeW}px solid ${el.kind.strokeColor || '#000000'}`,
-            borderRadius: el.kind.shape === 'circle' ? '9999px' : '0px',
-          }}
-        />
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+          {el.kind.shape === 'line' ? (
+            <line x1="0" y1="50" x2="100" y2="50" {...common} />
+          ) : el.kind.shape === 'vertical_line' ? (
+            <line x1="50" y1="0" x2="50" y2="100" {...common} />
+          ) : el.kind.shape === 'circle' ? (
+            <ellipse cx="50" cy="50" rx="46" ry="46" {...common} />
+          ) : el.kind.shape === 'rounded_rect' ? (
+            <rect x="2" y="2" width="96" height="96" rx="12" ry="12" {...common} />
+          ) : el.kind.shape === 'triangle' ? (
+            <polygon points="50,6 96,94 4,94" {...common} />
+          ) : el.kind.shape === 'diamond' ? (
+            <polygon points="50,4 96,50 50,96 4,50" {...common} />
+          ) : el.kind.shape === 'cross' ? (
+            <polygon points="35,4 65,4 65,35 96,35 96,65 65,65 65,96 35,96 35,65 4,65 4,35 35,35" {...common} />
+          ) : el.kind.shape === 'star' ? (
+            <polygon points="50,4 64,34 97,36 72,59 79,93 50,74 21,93 28,59 3,36 36,34" {...common} />
+          ) : el.kind.shape === 'hexagon' ? (
+            <polygon points="25,4 75,4 97,50 75,96 25,96 3,50" {...common} />
+          ) : (
+            <rect x="2" y="2" width="96" height="96" {...common} />
+          )}
+        </svg>
+      );
+    }
+    case 'table': {
+      const rows = el.kind.rows || 3;
+      const cols = el.kind.cols || 2;
+      const fontPx = Math.max(6, ((el.kind.fontSizePt || 8) * 25.4) / 72 * pxPerMm);
+      const align = el.kind.align || 'center';
+
+      return (
+        <table className="w-full h-full border-collapse border border-black" style={{ fontSize: `${fontPx}px` }}>
+          <tbody>
+            {Array.from({ length: rows }).map((_, r) => {
+              const isHeader = r === 0 && el.kind.headerRow;
+              return (
+                <tr key={r} className={`border-b border-black last:border-b-0 ${isHeader ? 'bg-slate-100 font-bold' : ''}`}>
+                  {Array.from({ length: cols }).map((_, c) => (
+                    <td key={c} className={`border-r border-black last:border-r-0 p-0.5 text-${align} text-slate-800`}>
+                      {el.kind.cells?.[r]?.[c] || ''}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       );
     }
     case 'reverse': {

@@ -44,25 +44,48 @@ export function compileToTspl2(project: LabelProject, ctx: EvalContext, dpi: Dpi
       case 'barcode': {
         const code = evaluateSegments(el.kind.segments, ctx).replace(/"/g, '');
         const readable = el.kind.showHumanReadable ? 1 : 0;
-        lines.push(`BARCODE ${x},${y},"128",${h},${readable},0,2,2,"${code}"`);
+        let tsplCode = '128';
+        const s = el.kind.symbology.toLowerCase();
+        if (s.includes('39')) tsplCode = '39';
+        else if (s === 'ean13') tsplCode = 'EAN13';
+        else if (s === 'ean8') tsplCode = 'EAN8';
+        else if (s === 'upca') tsplCode = 'UPCA';
+        else if (s === 'upce') tsplCode = 'UPCE';
+        else if (s.includes('itf')) tsplCode = 'ITF14';
+        else if (s.includes('codabar')) tsplCode = 'CODABAR';
+        else if (s.includes('93')) tsplCode = '93';
+        lines.push(`BARCODE ${x},${y},"${tsplCode}",${h},${readable},0,2,2,"${code}"`);
         break;
       }
 
       case 'qrcode': {
         const content = evaluateSegments(el.kind.segments, ctx).replace(/"/g, '\\"');
-        const ecc = el.kind.errorCorrection;
-        lines.push(`QRCODE ${x},${y},${ecc},4,A,0,"${content}"`);
+        const codeType = el.kind.codeType || 'QR_Code';
+        if (codeType === 'DATA_MATRIX') {
+          lines.push(`DMATRIX ${x},${y},${w},${h},"${content}"`);
+        } else if (codeType === 'PDF_417') {
+          lines.push(`PDF417 ${x},${y},${w},${h},0,0,"${content}"`);
+        } else {
+          const ecc = el.kind.errorCorrection || 'M';
+          const cellWidth =
+            el.kind.cellWidthDots ||
+            (el.kind.scalePercent ? Math.max(1, Math.min(10, Math.round((el.kind.scalePercent / 100) * 4))) : 4);
+          lines.push(`QRCODE ${x},${y},${ecc},${cellWidth},A,0,"${content}"`);
+        }
         break;
       }
 
       case 'graph': {
         const strokeDots = Math.max(1, mmToPrinterDots(el.kind.lineThicknessMm, dpi));
-        if (el.kind.shape === 'rectangle') {
-          lines.push(`BOX ${x},${y},${x + w},${y + h},${strokeDots}`);
-        } else if (el.kind.shape === 'line') {
+        if (el.kind.shape === 'line') {
           lines.push(`BAR ${x},${y},${w},${strokeDots}`);
+        } else if (el.kind.shape === 'vertical_line') {
+          lines.push(`BAR ${x},${y},${strokeDots},${h}`);
         } else if (el.kind.shape === 'circle') {
           lines.push(`CIRCLE ${x},${y},${w},${strokeDots}`);
+        } else {
+          // Box for rectangle, rounded_rect, triangle, diamond, hexagon, etc.
+          lines.push(`BOX ${x},${y},${x + w},${y + h},${strokeDots}`);
         }
         break;
       }

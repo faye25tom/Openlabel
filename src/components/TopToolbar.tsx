@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { LabelElement, LabelProject, PaperSetup } from '../types/model';
 import { SAMPLE_TEMPLATES } from '../data/sampleTemplates';
+import { SignedCoordinateInput } from './RightInspector';
 
 interface TopToolbarProps {
   project: LabelProject;
@@ -318,14 +319,12 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
 
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 text-[11px]">X</span>
-              <input
-                type="number"
-                step="0.5"
+              <SignedCoordinateInput
                 value={selectedElement.xMm}
-                onChange={(e) =>
+                onChange={(nx) =>
                   onUpdateElementBounds(
                     selectedElement.id,
-                    Number(e.target.value),
+                    nx,
                     selectedElement.yMm,
                     selectedElement.widthMm,
                     selectedElement.heightMm
@@ -338,15 +337,13 @@ export const TopToolbar: React.FC<TopToolbarProps> = ({
 
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500 text-[11px]">Y</span>
-              <input
-                type="number"
-                step="0.5"
+              <SignedCoordinateInput
                 value={selectedElement.yMm}
-                onChange={(e) =>
+                onChange={(ny) =>
                   onUpdateElementBounds(
                     selectedElement.id,
                     selectedElement.xMm,
-                    Number(e.target.value),
+                    ny,
                     selectedElement.widthMm,
                     selectedElement.heightMm
                   )

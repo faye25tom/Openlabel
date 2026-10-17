@@ -75,8 +75,87 @@ export interface PromptConfig {
   promptHint: string;
 }
 
-export type BarcodeSymbology = 'code128' | 'code39' | 'ean13' | 'upca';
-export type ShapeKind = 'rectangle' | 'line' | 'circle';
+export type BarcodeSymbology =
+  | 'code128'
+  | 'code128a'
+  | 'code128b'
+  | 'code128c'
+  | 'codabar'
+  | 'code39'
+  | 'code39ext'
+  | 'code93'
+  | 'code16k'
+  | 'code49'
+  | 'ean13'
+  | 'ean8'
+  | 'upca'
+  | 'upce'
+  | 'itf14'
+  | 'itf'
+  | 'gs1-128'
+  | 'pharmacode';
+
+export type TwoDCodeType =
+  | 'QR_Code'
+  | 'PDF_417'
+  | 'HANXIN'
+  | 'DATA_MATRIX'
+  | 'AZTEC'
+  | 'MAXICODE';
+
+export type ShapeCategory = 'basic' | 'lines_arrows' | 'industrial_safety' | 'polygons_stars';
+
+export type ShapeKind =
+  // Basic Shapes
+  | 'rectangle'
+  | 'rounded_rect'
+  | 'circle'
+  | 'ellipse'
+  | 'capsule'
+  | 'snip_corner_rect'
+  // Lines & Arrows
+  | 'line'
+  | 'vertical_line'
+  | 'diagonal_line_up'
+  | 'diagonal_line_down'
+  | 'arrow'
+  | 'arrow_left'
+  | 'arrow_up'
+  | 'arrow_down'
+  | 'double_arrow'
+  | 'double_arrow_v'
+  | 'bracket_left'
+  | 'bracket_right'
+  | 'brace_left'
+  | 'brace_right'
+  | 'corner_bracket'
+  | 'dimension_line'
+  // Industrial, Safety & Packaging
+  | 'hazard_triangle'
+  | 'prohibition'
+  | 'cross'
+  | 'shield'
+  | 'tag_shape'
+  | 'burst_seal'
+  | 'speech_bubble'
+  | 'cylinder'
+  | 'cube'
+  // Polygons & Stars
+  | 'triangle'
+  | 'triangle_down'
+  | 'triangle_right'
+  | 'diamond'
+  | 'parallelogram'
+  | 'trapezoid'
+  | 'pentagon'
+  | 'hexagon'
+  | 'octagon'
+  | 'star'
+  | 'star_4'
+  | 'star_6'
+  | 'star_8';
+
+export type LineStyle = 'solid' | 'dashed' | 'dotted';
 
 export type ElementKind =
   | {
@@ -97,15 +176,23 @@ export type ElementKind =
     }
   | {
       type: 'qrcode';
+      codeType: TwoDCodeType;
       segments: DataSegment[];
       activeSegmentIdx: number;
       errorCorrection: 'L' | 'M' | 'Q' | 'H';
+      cellWidthDots?: number; // TSPL module scale: 1 to 10 dots (小比例 / 码点放大倍数)
+      scalePercent?: number; // Internal scale ratio: 30% - 150% (default 100%)
+      marginModules?: number; // Quiet zone margin in modules (0, 1, 2, 4, default 1)
+      lockAspectRatio?: boolean; // Keep 1:1 square ratio
+      autoFitBox?: boolean; // Auto-fit to outer bounding box (default true)
       prompt: PromptConfig;
     }
   | {
       type: 'graph';
       shape: ShapeKind;
       lineThicknessMm: number;
+      lineStyle?: LineStyle;
+      cornerRadiusMm?: number;
       filled: boolean;
       strokeColor: string;
       fillColor: string;
@@ -116,6 +203,11 @@ export type ElementKind =
       cols: number;
       lineThicknessMm: number;
       cells: string[][];
+      headerRow?: boolean;
+      fontSizePt?: number;
+      align?: 'left' | 'center' | 'right';
+      borderColor?: string;
+      headerBgColor?: string;
     }
   | {
       type: 'reverse'; // Reverse video area

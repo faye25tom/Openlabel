@@ -9,6 +9,22 @@
     <meta property="og:description" content="High-precision clean-room industrial cloud label designer and printing workstation with TSPL/ZPL hardware compiler, dynamic serials, date offsets, database binding, and millimeter-accurate canvas." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Defensive guard against browser extension injection attempts that fail when reassigning fetch
+      try {
+        const origFetch = window.fetch;
+        if (origFetch) {
+          try {
+            Object.defineProperty(window, 'fetch', {
+              value: origFetch,
+              writable: true,
+              configurable: true,
+              enumerable: true,
+            });
+          } catch (_) {}
+        }
+      } catch (_) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
