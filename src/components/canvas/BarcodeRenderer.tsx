@@ -22,7 +22,6 @@ export const BarcodeRenderer: React.FC<BarcodeRendererProps> = ({
     if (!svgRef.current) return;
     const cleanVal = (value || '12345678').trim();
 
-    // Map custom symbology key to JsBarcode compatible format
     let jsFormat = 'CODE128';
     const fmt = format.toLowerCase();
 
@@ -59,8 +58,7 @@ export const BarcodeRenderer: React.FC<BarcodeRendererProps> = ({
         lineColor: '#000000',
       });
     } catch {
-      // Deterministic SVG fallback for stacked / unsupported formats (e.g. CODE 16K, CODE 49, invalid check digit)
-      renderDeterministicBarcodeSvg(svgRef.current, cleanVal, format.toUpperCase(), showText, width, height);
+      renderDeterministicBarcodeSvg(svgRef.current, cleanVal, showText, width, height);
     }
   }, [value, format, showText, width, height]);
 
@@ -76,10 +74,9 @@ export const BarcodeRenderer: React.FC<BarcodeRendererProps> = ({
 function renderDeterministicBarcodeSvg(
   svg: SVGSVGElement,
   val: string,
-  labelFormat: string,
   showText: boolean,
   w: number,
-  h: number
+  h: number,
 ) {
   const barH = showText ? Math.max(15, h - 18) : h - 4;
   const numBars = 50;
@@ -87,7 +84,6 @@ function renderDeterministicBarcodeSvg(
   const barW = Math.max(1.2, (w - 16) / numBars);
 
   for (let i = 0; i < numBars; i++) {
-    // Generate pseudo-pattern from string hash and index
     const charCode = val.charCodeAt(i % val.length) || 48;
     const isBar = (charCode + i * 7) % 2 === 0;
     const isThick = (charCode + i * 13) % 3 === 0;

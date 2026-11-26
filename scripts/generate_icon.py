@@ -5,8 +5,9 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "assets"
-SCALE = 4
+SCALE = 8
 SIZE = 256
+OUTPUT_SIZE = 512
 
 
 def rounded_rectangle(draw, box, radius, fill):
@@ -57,7 +58,7 @@ draw.ellipse(
     fill="#ffffff",
 )
 
-image = image.resize((SIZE, SIZE), Image.Resampling.LANCZOS)
+image = image.resize((OUTPUT_SIZE, OUTPUT_SIZE), Image.Resampling.LANCZOS)
 ASSETS.mkdir(parents=True, exist_ok=True)
 image.save(ASSETS / "icon.png", format="PNG")
 image.save(

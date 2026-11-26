@@ -1,14 +1,14 @@
 import React, { useMemo } from 'react';
 import QRCode from 'qrcode';
-import { TwoDCodeType } from '../types/model';
+import { TwoDCodeType } from '../../types/model';
 
 interface QrCodeRendererProps {
   value: string;
   codeType?: TwoDCodeType;
   errorCorrection?: 'L' | 'M' | 'Q' | 'H';
-  cellWidthDots?: number; // 1 to 10 TSPL module dots
-  scalePercent?: number; // 25% - 150% (default 100)
-  marginModules?: number; // 0, 1, 2, 4
+  cellWidthDots?: number;
+  scalePercent?: number;
+  marginModules?: number;
 }
 
 export const QrCodeRenderer: React.FC<QrCodeRendererProps> = ({
@@ -19,11 +19,9 @@ export const QrCodeRenderer: React.FC<QrCodeRendererProps> = ({
   marginModules = 1,
 }) => {
   const cleanVal = (value || 'https://openlabel.org').trim();
-  // Safe scale ratio from 25% to 160%
   const scale = Math.max(0.25, Math.min(1.6, (scalePercent || 100) / 100));
   const margin = Math.max(0, Math.min(6, marginModules ?? 1));
 
-  // 1. STANDARD QR CODE VECTOR GENERATION
   const qrSvgData = useMemo(() => {
     if (codeType !== 'QR_Code') return null;
     try {
@@ -46,13 +44,17 @@ export const QrCodeRenderer: React.FC<QrCodeRendererProps> = ({
 
       return { totalSize, path };
     } catch {
-      // Fallback pseudo-matrix
       const size = 21;
       const totalSize = size + margin * 2;
       let path = '';
       for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
-          if ((r + c) % 2 === 0 || (r < 7 && c < 7) || (r < 7 && c >= size - 7) || (r >= size - 7 && c < 7)) {
+          if (
+            (r + c) % 2 === 0 ||
+            (r < 7 && c < 7) ||
+            (r < 7 && c >= size - 7) ||
+            (r >= size - 7 && c < 7)
+          ) {
             path += `M${c + margin},${r + margin}h1v1h-1z `;
           }
         }
@@ -63,7 +65,6 @@ export const QrCodeRenderer: React.FC<QrCodeRendererProps> = ({
 
   if (codeType === 'QR_Code' && qrSvgData) {
     const { totalSize, path } = qrSvgData;
-    // Pure mathematical viewBox centering: guaranteed zero-clip and seamless scaling
     const vbSize = totalSize / scale;
     const vbOffset = (vbSize - totalSize) / 2;
 
@@ -79,37 +80,15 @@ export const QrCodeRenderer: React.FC<QrCodeRendererProps> = ({
     );
   }
 
-  // 2. DATA MATRIX VECTOR
-  if (codeType === 'DATA_MATRIX') {
-    return renderDataMatrixSvg(cleanVal, scale, margin);
-  }
-
-  // 3. PDF_417 VECTOR
-  if (codeType === 'PDF_417') {
-    return renderPdf417Svg(cleanVal, scale, margin);
-  }
-
-  // 4. HANXIN (汉信码) VECTOR
-  if (codeType === 'HANXIN') {
-    return renderHanxinSvg(cleanVal, scale, margin);
-  }
-
-  // 5. AZTEC CODE VECTOR
-  if (codeType === 'AZTEC') {
-    return renderAztecSvg(cleanVal, scale, margin);
-  }
-
-  // 6. MAXICODE VECTOR
-  if (codeType === 'MAXICODE') {
-    return renderMaxiCodeSvg(cleanVal, scale);
-  }
+  if (codeType === 'DATA_MATRIX') return renderDataMatrixSvg(cleanVal, scale, margin);
+  if (codeType === 'PDF_417') return renderPdf417Svg(cleanVal, scale, margin);
+  if (codeType === 'HANXIN') return renderHanxinSvg(cleanVal, scale, margin);
+  if (codeType === 'AZTEC') return renderAztecSvg(cleanVal, scale, margin);
+  if (codeType === 'MAXICODE') return renderMaxiCodeSvg(cleanVal, scale);
 
   return null;
 };
 
-/**
- * DataMatrix: L-shaped solid finder on bottom and left, clock track on top and right
- */
 function renderDataMatrixSvg(val: string, scale: number, margin: number) {
   const n = 16;
   const total = n + margin * 2;
@@ -124,7 +103,11 @@ function renderDataMatrixSvg(val: string, scale: number, margin: number) {
       const charCode = val.charCodeAt((r * n + c) % val.length) || 65;
       const isData = ((charCode ^ (r * 17 + c * 31)) % 7) > 2;
 
-      if (isL || isClock || (!isL && !isClock && r > 0 && r < n - 1 && c > 0 && c < n - 1 && isData)) {
+      if (
+        isL ||
+        isClock ||
+        (!isL && !isClock && r > 0 && r < n - 1 && c > 0 && c < n - 1 && isData)
+      ) {
         path += `M${c + margin},${r + margin}h1v1h-1z `;
       }
     }
@@ -142,9 +125,6 @@ function renderDataMatrixSvg(val: string, scale: number, margin: number) {
   );
 }
 
-/**
- * PDF417: Multi-row stacked linear 2D barcode format
- */
 function renderPdf417Svg(val: string, scale: number, margin: number) {
   const rows = 12;
   const cols = 48;
@@ -158,12 +138,9 @@ function renderPdf417Svg(val: string, scale: number, margin: number) {
 
   for (let r = 0; r < rows; r++) {
     const y = margin + r * 2;
-    // Start pattern
     path += `M${margin},${y}h2v2h-2z M${margin + 3},${y}h1v2h-1z M${margin + 5},${y}h2v2h-2z `;
-    // Stop pattern
     path += `M${totalW - margin - 5},${y}h2v2h-2z M${totalW - margin - 2},${y}h1v2h-1z `;
 
-    // Data codewords
     for (let c = 8; c < cols - 7; c++) {
       const charCode = val.charCodeAt((r * cols + c) % val.length) || 77;
       if ((charCode + r * 13 + c * 7) % 3 === 0) {
@@ -184,9 +161,6 @@ function renderPdf417Svg(val: string, scale: number, margin: number) {
   );
 }
 
-/**
- * Hanxin Code (汉信码): Chinese 2D symbology with 4 corner position patterns
- */
 function renderHanxinSvg(val: string, scale: number, margin: number) {
   const n = 23;
   const total = n + margin * 2;
@@ -194,7 +168,6 @@ function renderHanxinSvg(val: string, scale: number, margin: number) {
   const vbOffset = (vbSize - total) / 2;
   let path = '';
 
-  // 4 corners: 5x5 outer box with hollow center and 1x1 dot
   const corners = [
     [0, 0],
     [0, n - 5],
@@ -203,7 +176,6 @@ function renderHanxinSvg(val: string, scale: number, margin: number) {
   ];
 
   corners.forEach(([cr, cc]) => {
-    // 5x5 outer ring
     for (let r = 0; r < 5; r++) {
       for (let c = 0; c < 5; c++) {
         if (r === 0 || r === 4 || c === 0 || c === 4 || (r === 2 && c === 2)) {
@@ -213,7 +185,6 @@ function renderHanxinSvg(val: string, scale: number, margin: number) {
     }
   });
 
-  // Data modules
   for (let r = 0; r < n; r++) {
     for (let c = 0; c < n; c++) {
       const isCorner =
@@ -242,18 +213,14 @@ function renderHanxinSvg(val: string, scale: number, margin: number) {
   );
 }
 
-/**
- * Aztec Code: Central square bullseye finder
- */
 function renderAztecSvg(val: string, scale: number, margin: number) {
   const n = 27;
   const total = n + margin * 2;
   const vbSize = total / scale;
   const vbOffset = (vbSize - total) / 2;
-  const mid = Math.floor(n / 2); // 13
+  const mid = Math.floor(n / 2);
   let path = '';
 
-  // Bullseye concentric boxes
   for (let r = 0; r < n; r++) {
     for (let c = 0; c < n; c++) {
       const dr = Math.abs(r - mid);
@@ -286,9 +253,6 @@ function renderAztecSvg(val: string, scale: number, margin: number) {
   );
 }
 
-/**
- * MaxiCode: Circular bullseye surrounded by hexagonal honeycomb grid
- */
 function renderMaxiCodeSvg(val: string, scale: number) {
   const size = 100;
   const cx = 50;
@@ -324,11 +288,9 @@ function renderMaxiCodeSvg(val: string, scale: number) {
       className="w-full h-full block select-none pointer-events-none"
     >
       <rect x={-vbOffset} y={-vbOffset} width={vbSize} height={vbSize} fill="#ffffff" />
-      {/* Concentric rings */}
       <circle cx={cx} cy={cy} r="14" fill="none" stroke="#000000" strokeWidth="2.8" />
       <circle cx={cx} cy={cy} r="8.5" fill="none" stroke="#000000" strokeWidth="2.5" />
       <circle cx={cx} cy={cy} r="3" fill="#000000" />
-      {/* Honeycomb dots */}
       {dots.map((d, i) => (
         <circle key={i} cx={d.x} cy={d.y} r="1.4" fill="#000000" />
       ))}

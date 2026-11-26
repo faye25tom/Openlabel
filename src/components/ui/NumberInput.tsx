@@ -21,7 +21,12 @@ function formatValue(value: number): string {
   return Number.isFinite(value) ? String(value) : '';
 }
 
-function normalizeValue(value: number, min?: number, max?: number, integer = false): number {
+function normalizeValue(
+  value: number,
+  min?: number,
+  max?: number,
+  integer = false,
+): number {
   const rounded = integer ? Math.round(value) : value;
   if (min !== undefined && rounded < min) return min;
   if (max !== undefined && rounded > max) return max;
@@ -120,6 +125,33 @@ export const NumberInput: React.FC<NumberInputProps> = ({
       placeholder={placeholder}
       title={title}
       aria-label={ariaLabel}
+      className={className}
+    />
+  );
+};
+
+export interface SignedCoordinateInputProps {
+  value: number;
+  onChange: (val: number) => void;
+  className?: string;
+  title?: string;
+  ariaLabel?: string;
+}
+
+export const SignedCoordinateInput: React.FC<SignedCoordinateInputProps> = ({
+  value,
+  onChange,
+  className,
+  title,
+  ariaLabel,
+}) => {
+  return (
+    <NumberInput
+      title={title}
+      ariaLabel={ariaLabel}
+      step={0.5}
+      value={value}
+      onChange={onChange}
       className={className}
     />
   );

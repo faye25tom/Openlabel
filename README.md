@@ -3,7 +3,7 @@
 > **工业级云端条码标签设计器与热敏打印工作站**  
 > High-Precision Industrial Barcode & Label Designer with Clean-Room TSPL2 / ZPL II Hardware Compiler.
 
-![OpenLabel Studio](https://img.shields.io/badge/OpenLabel-v1.0.1-blue.svg)
+![OpenLabel Studio](https://img.shields.io/badge/OpenLabel-v1.1.0-blue.svg)
 ![React](https://img.shields.io/badge/React-19-61dafb.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6.svg)
 ![Vite](https://img.shields.io/badge/Vite-8.x-646cff.svg)
@@ -79,38 +79,33 @@
 
 ```text
 openlabel-studio/
-├── .env.example              # 环境变量配置示例
-├── index.html                # 入口 HTML，含防御性全局配置与安全注入防护
-├── metadata.json             # 平台元数据与应用配置
-├── package.json              # 依赖管理与执行脚本
-├── tsconfig.json             # TypeScript 编译器配置
-├── vite.config.ts            # Vite 构建配置（Tailwind v4 插件）
+├── .github/workflows/        # GitHub Actions CI 检查与 Tag 自动构建发布流水线
+│   ├── ci.yml                # main 分支 / PR 类型检查与构建验证
+│   └── release.yml           # 推送 v* 标签自动构建 Win/Mac/Linux 安装包并发布 Release
+├── electron/                 # Electron 桌面壳与 Windows RAW Spooler 打印桥接
+├── scripts/                  # 跨平台桌面端打包与图标生成脚本
 └── src/
-    ├── App.tsx               # 应用主容器、三栏工作区架构与工程状态机
-    ├── index.css             # Tailwind CSS 全局样式
+    ├── App.tsx               # 应用主容器与工作区组合
+    ├── index.css             # Tailwind CSS 与工作室基础样式
     ├── main.tsx              # React 根节点挂载入口
-    ├── components/           # UI 组件库
-    │   ├── BarcodePickerModal.tsx   # 60+ 条码全量选择弹窗
-    │   ├── BarcodeRenderer.tsx      # 一维条码矢量渲染器
-    │   ├── CanvasArea.tsx           # 毫米级高精度交互画板（标尺、缩放、暂存区）
-    │   ├── DatabaseManagerModal.tsx # Excel / CSV 数据库表格管理弹窗
-    │   ├── IconPickerModal.tsx      # 工业图标选择器
-    │   ├── LeftToolbox.tsx          # 左侧双列工业工具箱（10大常用工具）
-    │   ├── NewLabelModal.tsx        # 新建标签与纸张规格配置弹窗
-    │   ├── OcrModal.tsx             # OCR 文字识别弹窗
-    │   ├── PrintDialog.tsx          # 打印工作站与 TSPL/ZPL 指令输出弹窗
-    │   ├── QrCodeRenderer.tsx       # 高精度二维条码矢量渲染器（防裁剪视口计算）
-    │   ├── RightInspector.tsx       # 右侧属性上下文检查器（支持负数坐标与码点比例）
-    │   ├── Ruler.tsx                # 物理毫米刻度标尺（正负数刻度自适应）
-    │   ├── RustArchitectureModal.tsx# 纯安全 Rust / TSPL 编译器技术架构规范
-    │   └── TopToolbar.tsx           # 顶部工具栏、标签页管理与快速定位
+    ├── state/
+    │   └── useLabelWorkspace.ts     # 多标签页状态机、历史栈与快捷键中心
+    ├── components/
+    │   ├── ui/                      # NumberInput、ModalShell、InspectorSection、矢量图形库
+    │   ├── layout/                  # TopToolbar、LeftToolbox、StatusBar
+    │   ├── canvas/                  # CanvasArea、Ruler、ElementRenderer、条码/二维码渲染器
+    │   ├── inspector/               # RightInspector 及各类型图元属性面板模块
+    │   └── modals/                  # 打印工作站、标签设置、数据源、条码库等弹窗
     ├── data/
-    │   └── sampleTemplates.ts       # 工业预置模板库（汽车零部件、医疗耗材、物流箱唛等）
+    │   ├── catalogs.ts              # 条码、图形、图标、纸张预设统一注册表
+    │   ├── elementFactory.ts        # 图元与空白工程工厂函数
+    │   └── sampleTemplates.ts       # 工业预置模板库
     ├── engine/
     │   ├── evaluator.ts             # 数据段多源拼接、流水号运算与日期格式化求值器
-    │   └── tspl_compiler.ts         # TSPL2 底层热敏指令转译编译器
+    │   └── tspl_compiler.ts         # TSPL2 / ZPL II 底层热敏指令编译器
     └── types/
-        └── model.ts                 # 完整的标签工程、图元、字体、条码数据类型定义
+        ├── electron.d.ts            # Electron IPC 桥接类型声明
+        └── model.ts                 # 标签工程、图元、字体、条码数据类型定义
 ```
 
 ---
@@ -146,13 +141,32 @@ npm run build
 # 预览生产构建结果
 npm run preview
 
-# 构建 Windows x64 安装程序
+# 构建桌面端安装包（按平台）
 npm run dist:win
+npm run dist:mac
+npm run dist:linux
 ```
 
 构建产物将输出在 `dist/` 目录中，可直接部署至任何静态 Web 托管服务（Vercel、Cloudflare Pages、GitHub Pages、Nginx、Docker 等）。
 
-Windows 安装包将输出在 `release/` 目录中。
+桌面安装包将输出在 `release/` 目录中。
+
+### 自动发布安装包 (GitHub Actions Release)
+
+仓库已内置 [`.github/workflows/release.yml`](.github/workflows/release.yml)，推送形如 `v*` 的版本标签即可自动触发多平台打包与 GitHub Release 发布：
+
+```bash
+git tag v1.0.3
+git push origin v1.0.3
+```
+
+流水线会自动完成以下流程：
+1. **校验与前端构建**：验证语义化版本号（含 `-rc` 等预发布标记识别）、执行 `npm run lint` 与 `npm run build`。
+2. **多平台并行打包**：
+   - **Windows x64**：运行 Electron 桌面端冒烟测试，构建 `OpenLabel-Studio-<version>-Setup-x64.exe`（NSIS 安装包）与 `OpenLabel-Studio-<version>-Portable-x64.exe`（便携版）。
+   - **macOS (arm64 / x64)**：构建 `.dmg` 与 `.zip` 归档包。
+   - **Linux (x64)**：构建 `.AppImage` 与 `.deb` 安装包。
+3. **自动发布 Release**：生成全部安装包的 `SHA256SUMS.txt` 校验文件，并自动创建 GitHub Release 上传全部产物。
 
 ---
 

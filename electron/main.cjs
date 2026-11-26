@@ -233,24 +233,26 @@ function normalizePrinterStatus(statusCode, workOffline) {
 async function listInstalledPrinters(event) {
   const merged = new Map();
 
-  try {
-    const output = await runPowerShell(LIST_PRINTERS_SCRIPT, {}, 20000);
-    const parsed = output ? JSON.parse(output) : [];
-    const printers = Array.isArray(parsed) ? parsed : [parsed];
-    for (const printer of printers) {
-      if (!printer?.name) continue;
-      merged.set(printer.name, {
-        name: printer.name,
-        displayName: printer.name,
-        driverName: printer.driverName || '',
-        portName: printer.portName || '',
-        status: normalizePrinterStatus(printer.statusCode, printer.workOffline),
-        isDefault: Boolean(printer.isDefault),
-        source: 'windows',
-      });
+  if (process.platform === 'win32') {
+    try {
+      const output = await runPowerShell(LIST_PRINTERS_SCRIPT, {}, 20000);
+      const parsed = output ? JSON.parse(output) : [];
+      const printers = Array.isArray(parsed) ? parsed : [parsed];
+      for (const printer of printers) {
+        if (!printer?.name) continue;
+        merged.set(printer.name, {
+          name: printer.name,
+          displayName: printer.name,
+          driverName: printer.driverName || '',
+          portName: printer.portName || '',
+          status: normalizePrinterStatus(printer.statusCode, printer.workOffline),
+          isDefault: Boolean(printer.isDefault),
+          source: 'windows',
+        });
+      }
+    } catch (error) {
+      console.warn('Unable to enumerate printers through Win32_Printer:', error);
     }
-  } catch (error) {
-    console.warn('Unable to enumerate printers through Win32_Printer:', error);
   }
 
   try {
@@ -284,6 +286,9 @@ async function listInstalledPrinters(event) {
 }
 
 async function printRawToWindowsPrinter(options) {
+  if (process.platform !== 'win32') {
+    throw new Error('Windows RAW spooler printing is only supported on Windows.');
+  }
   if (!options || typeof options !== 'object') {
     throw new Error('Invalid print request.');
   }
@@ -419,7 +424,8 @@ function createWindow() {
           const screenshot = await mainWindow.webContents.capturePage();
           await fs.writeFile(process.env.OPENLABEL_SMOKE_SCREENSHOT, screenshot.toPNG());
         }
-        console.log(JSON.stringify({ smokeTest: true, ...result }));
+        const allowEmptyPrinters = process.env.OPENLABEL_SMOKE_ALLOW_EMPTY_PRINTERS === '1';
+        console.log(JSON.stringify({ smokeTest: true, allowEmptyPrinters, ...result }));
         app.exit(
           result.rootChildren > 0 &&
             result.title.includes('OpenLabel') &&
@@ -427,7 +433,7 @@ function createWindow() {
             result.rawPrinterGuard.length > 0 &&
             result.rawPrinterGuard !== 'unexpected-success' &&
             result.printDialogOpened &&
-            result.printerOptionCount > 0
+            (allowEmptyPrinters || result.printerOptionCount > 0)
             ? 0
             : 1,
         );
